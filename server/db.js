@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
@@ -9,7 +10,14 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'data', 'bakehouse.db');
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'bakehouse.db');
+const dbDir = path.dirname(dbPath);
+
+// Ensure the directory exists before better-sqlite3 attempts to open/create the file
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(dbPath);
 
 // Enable foreign keys and WAL mode for high concurrency

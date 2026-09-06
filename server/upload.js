@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Target upload directory inside public/uploads so it is immediately served by Vite & Express
-const uploadDir = path.resolve(__dirname, '..', 'public', 'uploads');
+// Target upload directory inside public/uploads (or custom persistent UPLOADS_DIR)
+export const uploadDir = process.env.UPLOADS_DIR || path.resolve(__dirname, '..', 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

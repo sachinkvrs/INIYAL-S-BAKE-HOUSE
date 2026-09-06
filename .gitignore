@@ -31,6 +31,10 @@ Thumbs.db
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+server/data/*
+!server/data/.gitkeep
 
 # Local uploaded files
 public/uploads/*
@@ -38,3 +42,5 @@ public/uploads/*
 
 # Temporary files
 *.local
+*.tmp
+*.temp
