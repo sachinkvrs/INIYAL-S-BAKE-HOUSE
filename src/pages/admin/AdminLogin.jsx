@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { Lock, Mail, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBrand } from '../../context/BrandContext';
 
@@ -30,11 +30,6 @@ export default function AdminLogin() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleFillDemo = () => {
-    setEmail('admin@iniyalsbakehouse.com');
-    setPassword('Iniyal@Brownies2026');
   };
 
   return (
@@ -85,7 +80,8 @@ export default function AdminLogin() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@iniyalsbakehouse.com"
+                  placeholder="Enter email address"
+                  autoComplete="username"
                   className="w-full pl-10 pr-4 py-3 bg-chocolate-950 border border-gold-500/40 rounded-xl text-cream-100 text-sm placeholder-chocolate-500 focus:outline-none focus:ring-2 focus:ring-caramel-500 focus:border-caramel-500 transition-all"
                 />
               </div>
@@ -105,7 +101,8 @@ export default function AdminLogin() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Enter password"
+                  autoComplete="current-password"
                   className="w-full pl-10 pr-4 py-3 bg-chocolate-950 border border-gold-500/40 rounded-xl text-cream-100 text-sm placeholder-chocolate-500 focus:outline-none focus:ring-2 focus:ring-caramel-500 focus:border-caramel-500 transition-all"
                 />
               </div>
@@ -127,18 +124,6 @@ export default function AdminLogin() {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Credentials Filler */}
-          <div className="mt-6 pt-5 border-t border-chocolate-800 text-center">
-            <button
-              type="button"
-              onClick={handleFillDemo}
-              className="text-xs text-gold-400 hover:text-white underline underline-offset-4 flex items-center justify-center gap-1.5 mx-auto"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-caramel-400" />
-              <span>Autofill Default Admin Credentials</span>
-            </button>
-          </div>
 
         </div>
 
