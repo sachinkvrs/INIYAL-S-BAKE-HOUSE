@@ -1,41 +1,47 @@
 import express from 'express';
-import db from '../db.js';
+import Setting from '../models/Setting.js';
 import { verifyTokenMiddleware } from '../auth.js';
 
 const router = express.Router();
 
 // GET all settings (Public)
-router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT key, value FROM settings').all();
-  const settings = {};
-  for (const row of rows) {
-    settings[row.key] = row.value;
+router.get('/', async (req, res) => {
+  try {
+    const docs = await Setting.find();
+    const settings = {};
+    for (const doc of docs) {
+      settings[doc.key] = doc.value;
+    }
+    res.json({ settings });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-  res.json({ settings });
 });
 
 // PUT Update settings (Protected)
-router.put('/', verifyTokenMiddleware, (req, res) => {
-  const updates = req.body;
-  const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
-
-  const transaction = db.transaction((data) => {
-    for (const [key, value] of Object.entries(data)) {
+router.put('/', verifyTokenMiddleware, async (req, res) => {
+  try {
+    const updates = req.body;
+    for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined && value !== null) {
-        stmt.run(key, String(value));
+        await Setting.findOneAndUpdate(
+          { key },
+          { key, value: String(value), updated_at: new Date() },
+          { upsert: true }
+        );
       }
     }
-  });
 
-  transaction(updates);
+    const docs = await Setting.find();
+    const settings = {};
+    for (const doc of docs) {
+      settings[doc.key] = doc.value;
+    }
 
-  const rows = db.prepare('SELECT key, value FROM settings').all();
-  const settings = {};
-  for (const row of rows) {
-    settings[row.key] = row.value;
+    res.json({ message: 'Settings updated successfully', settings });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-
-  res.json({ message: 'Settings updated successfully', settings });
 });
 
 export default router;

@@ -44,3 +44,5 @@ public/uploads/*
 *.local
 *.tmp
 *.temp
+.vercel
+.env*
