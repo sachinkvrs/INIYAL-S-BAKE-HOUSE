@@ -41,6 +41,32 @@ if (!fs.existsSync(uploadsPath)) {
 }
 const imagesPath = path.resolve(__dirname, '..', 'public', 'images');
 app.use('/uploads', express.static(uploadsPath));
+
+// Fallback for /uploads/:filename to serve directly from MongoDB if not on disk
+app.get('/uploads/:filename', async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+    const Image = (await import('./models/Image.js')).default;
+    const img = await Image.findOne({
+      $or: [
+        { filename },
+        { url: `/uploads/${filename}` },
+        { original_name: filename }
+      ]
+    });
+    if (img && img.data && img.data.startsWith('data:')) {
+      const parts = img.data.split(',');
+      const buffer = Buffer.from(parts[1], 'base64');
+      res.setHeader('Content-Type', img.mime_type || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(buffer);
+    }
+    next();
+  } catch (e) {
+    next();
+  }
+});
+
 app.use('/images', express.static(imagesPath));
 
 // Ensure DB connection before processing API routes

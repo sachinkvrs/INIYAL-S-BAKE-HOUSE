@@ -4,6 +4,7 @@ const imageSchema = new mongoose.Schema({
   filename: { type: String, required: true },
   original_name: { type: String, required: true },
   url: { type: String, required: true },
+  data: { type: String }, // Base64 data URI stored directly in MongoDB
   category: { type: String, default: 'other' },
   file_size: { type: Number },
   mime_type: { type: String },

@@ -1,8 +1,6 @@
 import express from 'express';
-import path from 'path';
-import fs from 'fs';
 import Image from '../models/Image.js';
-import { upload, uploadDir } from '../upload.js';
+import { upload } from '../upload.js';
 import { verifyTokenMiddleware } from '../auth.js';
 
 const router = express.Router();
@@ -22,7 +20,25 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST Upload Single Image (Protected)
+// GET raw image binary by ID
+router.get('/raw/:id', async (req, res) => {
+  try {
+    const img = await Image.findById(req.params.id);
+    if (!img) return res.status(404).json({ error: 'Image not found' });
+    if (img.data && img.data.startsWith('data:')) {
+      const parts = img.data.split(',');
+      const buffer = Buffer.from(parts[1], 'base64');
+      res.setHeader('Content-Type', img.mime_type || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(buffer);
+    }
+    return res.redirect(img.url);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load image' });
+  }
+});
+
+// POST Upload Single Image (Protected) - Uses memory storage and saves Base64 data in MongoDB
 router.post('/upload', verifyTokenMiddleware, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -31,12 +47,16 @@ router.post('/upload', verifyTokenMiddleware, upload.single('image'), async (req
 
     const category = req.body.category || 'other';
     const alt_text = req.body.alt_text || req.file.originalname;
-    const relativeUrl = `/uploads/${req.file.filename}`;
+
+    // Convert in-memory buffer to base64 data URI
+    const dataUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    const filename = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
     const image = await Image.create({
-      filename: req.file.filename,
+      filename,
       original_name: req.file.originalname,
-      url: relativeUrl,
+      url: dataUrl,
+      data: dataUrl,
       category,
       file_size: req.file.size,
       mime_type: req.file.mimetype,
@@ -45,12 +65,12 @@ router.post('/upload', verifyTokenMiddleware, upload.single('image'), async (req
 
     res.status(201).json({
       message: 'Image uploaded successfully',
-      url: relativeUrl,
+      url: dataUrl,
       image
     });
   } catch (err) {
     console.error('Image upload error:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
@@ -62,15 +82,20 @@ router.post('/upload-multiple', verifyTokenMiddleware, upload.array('images', 10
     }
 
     const category = req.body.category || 'products';
-    const docs = req.files.map(file => ({
-      filename: file.filename,
-      original_name: file.originalname,
-      url: `/uploads/${file.filename}`,
-      category,
-      file_size: file.size,
-      mime_type: file.mimetype,
-      alt_text: file.originalname
-    }));
+    const docs = req.files.map(file => {
+      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+      const filename = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      return {
+        filename,
+        original_name: file.originalname,
+        url: dataUrl,
+        data: dataUrl,
+        category,
+        file_size: file.size,
+        mime_type: file.mimetype,
+        alt_text: file.originalname
+      };
+    });
 
     const uploaded = await Image.insertMany(docs);
 
@@ -79,7 +104,8 @@ router.post('/upload-multiple', verifyTokenMiddleware, upload.array('images', 10
       images: uploaded
     });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Multiple image upload error:', err);
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
@@ -87,24 +113,6 @@ router.post('/upload-multiple', verifyTokenMiddleware, upload.array('images', 10
 router.delete('/:id', verifyTokenMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const img = await Image.findById(id);
-    if (!img) {
-      return res.status(404).json({ error: 'Image not found' });
-    }
-
-    // Attempt removing local file if it exists
-    if (img.url.startsWith('/uploads/')) {
-      const fileName = path.basename(img.url);
-      const filePath = path.join(uploadDir, fileName);
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-        } catch (e) {
-          // Continue
-        }
-      }
-    }
-
     await Image.findByIdAndDelete(id);
     res.json({ message: 'Image deleted successfully' });
   } catch (err) {
